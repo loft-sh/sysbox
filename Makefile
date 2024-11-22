@@ -38,6 +38,8 @@ ifeq ($(UNAME_M),x86_64)
 	SYS_ARCH := amd64
 else ifeq ($(UNAME_M),aarch64)
 	SYS_ARCH := arm64
+else ifeq ($(UNAME_M),arm64)
+	SYS_ARCH := arm64
 else ifeq ($(UNAME_M),arm)
 	SYS_ARCH := armhf
 else ifeq ($(UNAME_M),armel)
@@ -80,7 +82,8 @@ else
 INSTALL_DIR := ${DESTDIR}
 endif
 
-IMAGE_BASE_DISTRO := $(shell cat /etc/os-release | grep "^ID=" | cut -d "=" -f2 | tr -d '"')
+IMAGE_BASE_DISTRO := ubuntu
+IMAGE_BASE_RELEASE := jammy
 
 # Host kernel info
 KERNEL_REL := $(shell uname -r)
@@ -89,23 +92,23 @@ KERNEL_REL_MIN := $(shell echo $(KERNEL_REL) | cut -d'.' -f2)
 export KERNEL_REL
 
 # Sysbox image-generation globals utilized during the sysbox's building and testing process.
-ifeq ($(IMAGE_BASE_DISTRO),$(filter $(IMAGE_BASE_DISTRO),centos fedora redhat almalinux rocky amzn))
-	IMAGE_BASE_RELEASE := $(shell cat /etc/os-release | grep "^VERSION_ID" | cut -d "=" -f2 | tr -d '"' | cut -d "." -f1)
-	KERNEL_HEADERS := kernels/$(KERNEL_REL)
-else
-	IMAGE_BASE_RELEASE := $(shell cat /etc/os-release | grep "^VERSION_CODENAME" | cut -d "=" -f2)
-	ifeq ($(IMAGE_BASE_DISTRO),linuxmint)
-		IMAGE_BASE_DISTRO := ubuntu
-		ifeq ($(IMAGE_BASE_RELEASE),$(filter $(IMAGE_BASE_RELEASE),ulyana ulyssa uma))
-			IMAGE_BASE_RELEASE := focal
-		endif
-		ifeq ($(IMAGE_BASE_RELEASE),$(filter $(IMAGE_BASE_RELEASE),tara tessa tina tricia))
-			IMAGE_BASE_RELEASE := bionic
-		endif
-	endif
-	KERNEL_HEADERS := linux-headers-$(KERNEL_REL)
-	KERNEL_HEADERS_BASE := $(shell find /usr/src/$(KERNEL_HEADERS) -maxdepth 1 -type l -exec readlink {} \; | cut -d"/" -f2 | egrep -v "^\.\." | head -1)
-endif
+#ifeq ($(IMAGE_BASE_DISTRO),$(filter $(IMAGE_BASE_DISTRO),centos fedora redhat almalinux rocky amzn))
+#	IMAGE_BASE_RELEASE := $(shell cat /etc/os-release | grep "^VERSION_ID" | cut -d "=" -f2 | tr -d '"' | cut -d "." -f1)
+#	KERNEL_HEADERS := kernels/$(KERNEL_REL)
+#else
+#	IMAGE_BASE_RELEASE := $(shell cat /etc/os-release | grep "^VERSION_CODENAME" | cut -d "=" -f2)
+#	ifeq ($(IMAGE_BASE_DISTRO),linuxmint)
+#		IMAGE_BASE_DISTRO := ubuntu
+#		ifeq ($(IMAGE_BASE_RELEASE),$(filter $(IMAGE_BASE_RELEASE),ulyana ulyssa uma))
+#			IMAGE_BASE_RELEASE := focal
+#		endif
+#		ifeq ($(IMAGE_BASE_RELEASE),$(filter $(IMAGE_BASE_RELEASE),tara tessa tina tricia))
+#			IMAGE_BASE_RELEASE := bionic
+#		endif
+#	endif
+#	KERNEL_HEADERS := linux-headers-$(KERNEL_REL)
+#	KERNEL_HEADERS_BASE := $(shell find /usr/src/$(KERNEL_HEADERS) -maxdepth 1 -type l -exec readlink {} \; | cut -d"/" -f2 | egrep -v "^\.\." | head -1)
+#endif
 
 TEST_DIR := $(CURDIR)/tests
 TEST_IMAGE := sysbox-test-$(TARGET_ARCH)
@@ -226,8 +229,10 @@ sysbox-runc-debug: sysbox-ipc
 	@cd $(SYSRUNC_DIR) && chown -R $(HOST_UID):$(HOST_GID) build
 
 sysbox-runc-static: sysbox-ipc
+	echo "Before Building runc static"
 	@cd $(SYSRUNC_DIR) && make static
 	@cd $(SYSRUNC_DIR) && chown -R $(HOST_UID):$(HOST_GID) build
+	echo "After Building runc static"
 
 sysbox-fs: sysbox-ipc
 	@cd $(SYSFS_DIR) && make
@@ -464,6 +469,9 @@ endif
 test-img: ## Build test container image
 test-img:
 	@printf "\n** Building the test container **\n\n"
+	echo "docker build -t $(TEST_IMAGE) \
+             		--build-arg sys_arch=$(SYS_ARCH) --build-arg target_arch=$(TARGET_ARCH) \
+             		-f Dockerfile.$(IMAGE_BASE_DISTRO)-$(IMAGE_BASE_RELEASE) ."
 	@cd $(TEST_DIR) && docker build -t $(TEST_IMAGE) \
 		--build-arg sys_arch=$(SYS_ARCH) --build-arg target_arch=$(TARGET_ARCH) \
 		-f Dockerfile.$(IMAGE_BASE_DISTRO)-$(IMAGE_BASE_RELEASE) .

@@ -1,0 +1,68 @@
+#!/usr/bin/make -f
+
+# Output every command that modifies files on the build system. Enable me for
+# debugging purposes.
+export DH_VERBOSE = 1
+
+# Override buildeb step to enforce 'xz' as the compressor to rely on. Notice
+# that starting with Ubuntu Impish (i.e., 21.10), all packages make use of
+# 'zstd' as the default compressor, but this one is not supported in debian
+# distro yet.
+override_dh_builddeb:
+	dh_builddeb -- -Zxz
+
+override_dh_auto_build:
+	# Build sysbox's components.
+	cd sysbox && make sysbox-static-local
+
+override_dh_auto_test:
+
+# Override dwz to avoid issues in debian-buster with debhelper=12 compat.
+override_dh_dwz:
+
+# ONESHELL attribute to ensure that all instruccions in this target are executed
+# within a single shell process.
+.ONESHELL:
+SHELL=/bin/bash
+override_dh_auto_install:
+	# Sysbox binaries will be installed through the regular (makefile) process.
+	install -D -m0755 sysbox/sysbox-fs/build/${ARCH}/sysbox-fs \
+		debian/sysbox-ee/usr/bin/sysbox-fs
+	install -D -m0755 sysbox/sysbox-mgr/build/${ARCH}/sysbox-mgr \
+		debian/sysbox-ee/usr/bin/sysbox-mgr
+	install -D -m0755 sysbox/sysbox-runc/build/${ARCH}/sysbox-runc \
+		debian/sysbox-ee/usr/bin/sysbox-runc
+
+	# Sysbox services installation.
+	install -D -m 0644 /sources/sysbox.service \
+		debian/sysbox-ee/lib/systemd/system/sysbox.service
+	install -D -m 0644 /sources/sysbox-fs.service \
+		debian/sysbox-ee/lib/systemd/system/sysbox-fs.service
+	install -D -m 0644 /sources/sysbox-mgr.service \
+		debian/sysbox-ee/lib/systemd/system/sysbox-mgr.service
+
+	# Sysbox's sysctl.d config-file to hold the required procfs settings.
+	# Notice we're picking the largest two-digit integer to name this file
+	# to avoid collisions with other package's requirements -- we expect
+	# our requirements to be more generic, so we want ours to prevail.
+	install -D -m 0644 /sources/99-sysbox-sysctl.conf \
+		debian/sysbox-ee/lib/sysctl.d/99-sysbox-sysctl.conf
+
+override_dh_installinit:
+	# Use "sysbox" as our service name, not "sysbox-ee".
+	dh_installinit --name=sysbox
+
+override_dh_install:
+	dh_install
+
+# Override dh_usrlocal to prevent error after placing sysbox binaries in
+# /usr/local path.
+override_dh_usrlocal:
+
+override_dh_installsystemd:
+	dh_installsystemd --name=sysbox
+	dh_installsystemd --name=sysbox-fs
+	dh_installsystemd --name=sysbox-mgr
+
+%:
+	dh $@

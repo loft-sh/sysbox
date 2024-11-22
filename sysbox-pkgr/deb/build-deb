@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+#
+# Copyright: (C) 2019-2021 Nestybox Inc.  All rights reserved.
+#
+
+set -x
+set -e
+
+# Untar Sysbox sources.
+mkdir -p /root/build-deb/sysbox
+tar -C /root/build-deb -xzf /sources/sysbox.tgz
+chown -R $(id -u):$(id -g) .
+
+# Obtain sysbox version out of the source tree.
+VERSION=$(cat /root/build-deb/sysbox/VERSION)
+
+###############################################################################
+#
+# Create sysbox's debian package. Note that the generated package will
+# include all the traditional debian artifacts (tar, dsc, deb, etc), thereby,
+# we should ensure that only the *.deb file (binaries) is externally shared.
+#
+###############################################################################
+
+# Generate debian's changelog file.
+/root/build-deb/changelog_convert.sh
+if [[ ! $? -eq 0 ]]; then
+  exit 1
+fi
+
+# Initialize dockerd to allow sysbox's containerized compilation as part of
+# of dpkg-build.
+dockerd > /var/log/dockerd.log 2>&1 &
+sleep 3
+
+# Build the package and copy artifacts to the expected location.
+dpkg-buildpackage -uc -us -I.git
+mkdir -p /build
+mv -v /root/sysbox* /build

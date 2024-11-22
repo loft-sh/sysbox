@@ -1,0 +1,12 @@
+build
+vendor/pkg
+contrib/cmd/recvtty/recvtty
+man/man8
+release
+Vagrantfile
+.vagrant
+GPATH
+GRTAGS
+GTAGS
+.ccls-cache
+.vscode

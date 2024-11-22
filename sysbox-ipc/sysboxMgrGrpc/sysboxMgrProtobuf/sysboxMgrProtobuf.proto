@@ -1,0 +1,271 @@
+//
+// SysboxMgr Protobuffer Definitions.
+//
+
+syntax = "proto3";
+
+option go_package = "./;sysboxMgrProtobuf";
+
+package protobuf;
+
+//
+// sysboxMgr channel
+//
+service sysboxMgrStateChannel {
+
+    // Container registration
+    rpc Register (RegisterReq) returns (RegisterResp) {}
+
+    // Container Update
+    rpc Update (UpdateReq) returns (UpdateResp) {}
+
+    // Container Unregistration
+    rpc Unregister (UnregisterReq) returns (UnregisterResp) {}
+
+    // Subuid(gid) allocation request
+    rpc SubidAlloc (SubidAllocReq) returns (SubidAllocResp) {}
+
+    // Mount source prep request
+    rpc PrepMounts (MountPrepReq) returns (MountPrepResp) {}
+
+    // Mount request
+    rpc ReqMounts (MountReq) returns (MountResp) {}
+
+    // Shiftfs mark request
+    rpc ReqShiftfsMark (ShiftfsMarkReq) returns (ShiftfsMarkResp) {}
+
+    // FsState request
+    rpc ReqFsState (FsStateReq) returns (FsStateResp) {}
+
+    // Pause request
+    rpc Pause (PauseReq) returns (PauseResp) {}
+
+    // Resume request
+    rpc Resume (ResumeReq) returns (ResumeResp) {}
+
+    // Clone rootfs request
+    rpc ReqCloneRootfs (CloneRootfsReq) returns (CloneRootfsResp) {}
+
+    // Chown cloned rootfs request
+    rpc ChownClonedRootfs (ChownClonedRootfsReq) returns (ChownClonedRootfsResp) {}
+
+    // Revert cloned rootfs chown
+    rpc RevertClonedRootfsChown (RevertClonedRootfsChownReq) returns (RevertClonedRootfsChownResp) {}
+}
+
+//
+// Registration & Unregistration
+//
+
+message IDMapping {
+    uint32 containerID = 1;
+    uint32 hostID = 2;
+    uint32 size = 3;
+}
+
+message RegisterReq {
+    string id = 1;
+    string rootfs = 2;
+    string userns = 3;
+    string netns = 4;
+    repeated IDMapping uidMappings = 5;
+    repeated IDMapping gidMappings = 6;
+}
+
+message ContainerConfig {
+    bool aliasDns = 1;
+    bool ShiftfsOk = 2;
+    bool ShiftfsOnOverlayfsOk = 3;
+    bool IDMapMountOk = 4;
+    bool OverlayfsOnIDMapMountOk = 5;
+    bool noRootfsCloning = 6;
+    bool ignoreSysfsChown = 7;
+    bool allowTrustedXattr = 8;
+    bool honorCaps = 9;
+    bool syscontMode = 10;
+    string userns = 11;
+    repeated IDMapping uidMappings = 12;
+    repeated IDMapping gidMappings = 13;
+    bool fsuidMapFailOnErr = 14;
+    uint32 rootfsUidShiftType = 15;
+    bool noShiftfsOnFuse = 16;
+    bool relaxedReadOnly = 17;
+}
+
+message RegisterResp {
+    ContainerConfig containerConfig = 1;
+}
+
+message UpdateReq {
+    string id = 1;
+    string userns = 2;
+    string netns = 3;
+    repeated IDMapping uidMappings = 4;
+    repeated IDMapping gidMappings = 5;
+    uint32 rootfsUidShiftType = 6;
+}
+
+message UpdateResp {
+}
+
+message UnregisterReq {
+    string id = 1;
+}
+
+message UnregisterResp {
+}
+
+//
+// Subid alloc
+//
+
+message SubidAllocReq {
+    string id = 1;
+    uint64 size = 2;
+}
+
+message SubidAllocResp {
+    uint32 uid = 1;
+    uint32 gid = 2;
+}
+
+//
+// Mount Source Prep Request
+//
+
+message MountPrepInfo {
+    string source = 1;
+    bool exclusive = 2;
+}
+
+message MountPrepReq {
+    string id = 1;
+    uint32 uid = 2;
+    uint32 gid = 3;
+    repeated MountPrepInfo prepList = 4;
+}
+
+message MountPrepResp {
+}
+
+//
+// Mount Requests
+//
+
+message MountReqInfo {
+    uint32 kind = 1;
+    string dest = 2;
+}
+
+message MountReq {
+    string id = 1;
+    uint32 rootfsUidShiftType = 2;
+    repeated MountReqInfo reqList = 3;
+}
+
+message Mount {
+    string source = 1;
+    string dest = 2;
+    string type = 3;
+    repeated string opt = 4;
+}
+
+message MountResp {
+    repeated Mount mounts = 1;
+}
+
+//
+// Shiftfs mark request
+//
+
+message ShiftfsMark {
+    string source = 1;
+    bool readonly = 2;
+}
+
+message ShiftfsMarkReq {
+    string id = 1;
+    repeated ShiftfsMark shiftfsMarks = 2;
+}
+
+message ShiftfsMarkResp {
+    repeated ShiftfsMark shiftfsMarks = 1;
+}
+
+//
+// FsState Requests
+//
+
+message FsStateReq {
+    string id = 1;
+    string rootfs = 2;
+}
+
+message FsEntry {
+    uint32 kind = 1;
+    string path = 2;
+    uint32 mode = 3;
+    string dst = 4;
+}
+
+message FsStateResp {
+    repeated FsEntry fsEntries = 1;
+}
+
+//
+// Pause request
+//
+
+message PauseReq {
+    string id = 1;
+}
+
+message PauseResp {
+}
+
+//
+// Resume request
+//
+
+message ResumeReq {
+    string id = 1;
+}
+
+message ResumeResp {
+}
+
+//
+// CloneRootfs request
+//
+
+message CloneRootfsReq {
+    string id = 1;
+}
+
+message CloneRootfsResp {
+    string rootfs = 1;
+}
+
+//
+// ChownClonedRootfs request
+//
+
+message ChownClonedRootfsReq {
+    string id = 1;
+    int32 uidOffset = 2;
+    int32 gidOffset = 3;
+}
+
+message ChownClonedRootfsResp {
+}
+
+//
+// RevertClonedRootfsChown request
+//
+
+message RevertClonedRootfsChownReq {
+    string id = 1;
+}
+
+message RevertClonedRootfsChownResp {
+}

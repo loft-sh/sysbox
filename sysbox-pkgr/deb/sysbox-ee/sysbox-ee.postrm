@@ -1,0 +1,107 @@
+#!/bin/bash
+#
+# Copyright: (C) 2019-2021 Nestybox Inc.  All rights reserved.
+#
+
+set -e
+
+# Source debconf library.
+. /usr/share/debconf/confmodule
+
+# Dockerd default configuration dir/file.
+dockerCfgDir="/etc/docker"
+dockerCfgFile="${dockerCfgDir}/daemon.json"
+
+# Docker config vars.
+docker_runtime_config_changed="false"
+
+# Temp file for jq write operations.
+tmpfile=$(mktemp /tmp/installer-scr.XXXXXX)
+trap 'rm -f "${tmpfile}"' EXIT
+
+#
+# Note: As per Debian packaging policies, package elimination should not remove
+# logfiles. Therefore we shouldn't delete the 'sysbox' user/group previously
+# created by Sysbox's installation process, as it would leave files with
+# dangling ownership.
+#
+
+function adjust_docker_config_runtime() {
+
+    # Eliminate sysbox's runtime entry if present.
+    if [ $(jq 'has("runtimes")' ${dockerCfgFile}) = "true" ] &&
+        [ $(jq '.runtimes | has("sysbox-runc")' ${dockerCfgFile}) = "true" ]; then
+
+        jq 'del(.runtimes."sysbox-runc")' \
+            ${dockerCfgFile} >${tmpfile} && cp ${tmpfile} ${dockerCfgFile}
+
+        # If sysbox is a docker registered runtime, ensure that the uninstallation
+        # process updates dockerd.
+        if command -v docker >/dev/null 2>&1 &&
+            docker info 2>&1 | egrep -q "Runtimes:.*sysbox-runc"; then
+
+            docker_runtime_config_changed="true"
+        fi
+    fi
+}
+
+#
+# Modify dockerd configuration to eliminate Sysbox runtime.
+#
+function adjust_docker_config() {
+
+    local docker_sighup_required=false
+
+    # There is not much to do here if docker config file is not present.
+    if [ ! -f ${dockerCfgFile} ]; then
+        return
+    fi
+
+    adjust_docker_config_runtime
+
+    if ! docker_running; then
+        return
+    fi
+
+    # Send docker a sighup to digest the absence of sysbox runtime.
+    # This should not impact current non-sysbox containers.
+    if [ ${docker_runtime_config_changed} = "true" ]; then
+        kill -SIGHUP $(pidof dockerd)
+    fi
+}
+
+#
+# Checks if the docker engine is installed on the host
+#
+function docker_installed() {
+    ret=$(command -v dockerd >/dev/null 2>&1)
+    return $?
+}
+
+#
+# Checks if the docker engine is running on the host
+#
+function docker_running() {
+    ret=$(pidof dockerd >/dev/null 2>&1)
+    return $?
+}
+
+case "$1" in
+purge)
+    # Adjust docker config to eliminate entries added by Sysbox's
+    # installation process.
+    adjust_docker_config
+    ;;
+
+remove | upgrade | failed-upgrade | abort-install | abort-upgrade | disappear) ;;
+
+\
+    *)
+    echo "postrm called with unknown argument \`$1'" >&2
+    exit 1
+    ;;
+esac
+
+#DEBHELPER#
+
+exit 0

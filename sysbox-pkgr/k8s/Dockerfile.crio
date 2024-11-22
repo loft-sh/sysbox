@@ -1,0 +1,41 @@
+#
+# CRI-O build container Dockerfile
+#
+
+FROM ubuntu:jammy
+
+ARG sys_arch
+ENV SYS_ARCH=${sys_arch}
+
+ARG CRIO_VERSIONS
+ENV CRIO_VERSIONS=${CRIO_VERSIONS}
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    git \
+    make \
+    wget \
+    ca-certificates \
+    ssh-client \
+    gcc \
+    libgpgme-dev \
+    pkg-config \
+    libseccomp-dev
+
+# Install Golang and explicitly activate modules functionality.
+RUN wget https://golang.org/dl/go1.22.2.linux-${sys_arch}.tar.gz && \
+    tar -C /usr/local -xzf go1.22.2.linux-${sys_arch}.tar.gz && \
+    /usr/local/go/bin/go env -w GONOSUMDB=/root/nestybox
+
+ENV GOPATH /go
+ENV PATH $GOPATH/bin:/usr/local/go/bin:$PATH
+RUN go env -w GONOSUMDB=/root/nestybox && \
+    mkdir -p "$GOPATH/src" "$GOPATH/bin" && \
+    chmod -R 777 "$GOPATH"
+
+# CRI-O build script
+COPY scripts/crio-build.sh /usr/bin/crio-build.sh
+
+WORKDIR /root
+CMD crio-build.sh

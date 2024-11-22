@@ -1,0 +1,10 @@
+# Ignore build artifacts
+build
+
+# Ignore virtual-studio-code metadata
+.vscode
+
+# GNU global tags
+GPATH
+GRTAGS
+GTAGS

@@ -1,0 +1,13 @@
+# Ignore sysbox-fs compilation artifacts
+build
+
+# Ignore protobuf auto-generated code
+sysbox-ipc
+
+# Ignore virtual-studio-code metadata
+.vscode
+
+# GNU global tags
+GPATH
+GRTAGS
+GTAGS

@@ -1,9 +1,10 @@
 # Ignore the sysbox build token and build dir
-build
+build/
 .buildinfo
 
 # Ignore virtual-studio-code metadata
 .vscode
+.idea
 
 # Ignore paths holding build artifacts and related files.
 image/deb/debbuild/
