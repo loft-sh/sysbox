@@ -229,10 +229,8 @@ sysbox-runc-debug: sysbox-ipc
 	@cd $(SYSRUNC_DIR) && chown -R $(HOST_UID):$(HOST_GID) build
 
 sysbox-runc-static: sysbox-ipc
-	echo "Before Building runc static"
 	@cd $(SYSRUNC_DIR) && make static
 	@cd $(SYSRUNC_DIR) && chown -R $(HOST_UID):$(HOST_GID) build
-	echo "After Building runc static"
 
 sysbox-fs: sysbox-ipc
 	@cd $(SYSFS_DIR) && make
